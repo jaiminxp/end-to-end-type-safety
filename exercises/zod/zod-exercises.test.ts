@@ -167,7 +167,9 @@ describe.todo('Basic Zod (Exercises)', () => {
     return true;
   }
 
-  const primeNumberSchema = '🥸 IMPLEMENT ME!' as any;
+    const primeNumberSchema = z.number().refine(isPrime, {
+        message: 'Quantity must be prime'
+    })
 
   describe('Challenge 5: Refinements (Prime Number)', () => {
     it('should pass for a prime number (5)', () => {
@@ -188,7 +190,14 @@ describe.todo('Basic Zod (Exercises)', () => {
    * - string in YYYY-MM-DD format -> transform into Date
    *
    */
-  const dateStringSchema = '🥸 IMPLEMENT ME!' as any;
+    const dateStringSchema = z.string().transform(val => {
+        const date = new Date(val);
+
+        if (isNaN(date.getTime()))
+            throw new Error('Invalid date string')
+
+        return date
+    })
 
   describe('Challenge 6: Transform to Date', () => {
     it('should transform a valid string to a Date', () => {
@@ -211,7 +220,7 @@ describe.todo('Basic Zod (Exercises)', () => {
    * - userIdSchema = z.string().uuid().brand<"UserId">()
    *
    */
-  const userIdSchema = '🥸 IMPLEMENT ME!' as any;
+  const userIdSchema = z.string().uuid().brand<"UserId">();
   type UserId = z.infer<typeof userIdSchema>; // string & { __brand: "UserId" }
 
   describe('Challenge 7: Branded UUID', () => {
@@ -232,11 +241,16 @@ describe.todo('Basic Zod (Exercises)', () => {
    *
    * We'll reuse a "fullUserSchema" and create partial/picked/omitted versions
    */
-  const fullUserSchema = '🥸 IMPLEMENT ME!' as any;
+    const fullUserSchema = z.object({
+        name: z.string(),
+        email: z.string().email(),
+        phoneNumber: z.string(),
+        addresses: z.array(addressSchema).nonempty()
+    })
 
-  const partialUserUpdateSchema = '🥸 IMPLEMENT ME!' as any;
-  const publicProfileSchema = '🥸 IMPLEMENT ME!' as any;
-  const userWithoutEmailSchema = '🥸 IMPLEMENT ME!' as any;
+  const partialUserUpdateSchema = fullUserSchema.partial()
+  const publicProfileSchema = fullUserSchema.pick({name: true, addresses: true})
+    const userWithoutEmailSchema = fullUserSchema.omit({ email: true })
 
   describe('Challenge 8: partial, pick, omit', () => {
     const sampleData = {
@@ -277,7 +291,13 @@ describe.todo('Basic Zod (Exercises)', () => {
    *
    * - Validate hex color string (#FFF or #FFFFFF, etc.)
    */
-  const hexColorSchema = '🥸 IMPLEMENT ME!' as any;
+    const hexColorSchema = z.custom<string>((val) => {
+        if (!/^[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?$/.test(val)) {
+            throw new Error('Invalid hex color')
+        }
+
+        return val
+    }).brand<'HexColor'>()
 
   describe('Challenge 9: Custom (Hex Color)', () => {
     it('should pass #FFF', () => {
@@ -310,15 +330,26 @@ describe.todo('Basic Zod (Exercises)', () => {
    * - email (valid email)
    * - birthDate (optional, if present must be valid date and transformed to Date)
    */
-  const usernameSchema = '🥸 IMPLEMENT ME!' as any;
+  const usernameSchema = z.string().min(4).max(16)
 
-  const passwordSchema = '🥸 IMPLEMENT ME!' as any;
+    const passwordSchema = z.string().min(8)
+        .refine((val) => /\d/.test(val), {message: 'Must contain a digit'})
 
-  const emailSchema = '🥸 IMPLEMENT ME!' as any;
+  const emailSchema = z.string().email()
 
-  const birthDateSchema = '🥸 IMPLEMENT ME!' as any;
+    const birthDateSchema = z.string().optional().refine((val) => {
+        if (!val) return true
+        return !isNaN(new Date(val).valueOf())
+    }, {
+        message: 'Invalid birth date format'
+    })
 
-  const registrationFormSchema = '🥸 IMPLEMENT ME!' as any;
+    const registrationFormSchema = z.object({
+        username: usernameSchema,
+        password: passwordSchema,
+        email: emailSchema,
+        birthDate: birthDateSchema
+    })
 
   describe('Challenge 10: Full Form Validator', () => {
     it('should pass valid form data', () => {
