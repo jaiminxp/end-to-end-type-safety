@@ -1,8 +1,23 @@
+import { z } from 'zod';
 import { PartialTask, Task } from './types';
 
 const API_URL = 'http://localhost:4001';
 
-export const fetchTasks = async (showCompleted: boolean): Promise<Task[]> => {
+type TaskList = z.infer<typeof TaskListSchema>
+
+export const TaskSchema = z.object({
+  id: z.number(),
+  title: z.string(),
+  description: z.string().optional(),
+  completed: z.coerce.boolean().default(false)
+})
+
+export const CreateTaskSchema = TaskSchema.omit({ id: true })
+export const UpdateTaskSchema = TaskSchema.partial().omit({ id: true })
+
+export const TaskListSchema = z.array(TaskSchema)
+
+export const fetchTasks = async (showCompleted: boolean): Promise<TaskList> => {
   const url = new URL(`/tasks`, API_URL);
 
   if (showCompleted) {
@@ -15,7 +30,8 @@ export const fetchTasks = async (showCompleted: boolean): Promise<Task[]> => {
     throw new Error('Failed to fetch tasks');
   }
 
-  return response.json();
+    const tasks = TaskListSchema.parse(await response.json())
+      return tasks
 };
 
 export const getTask = async (id: string): Promise<Task> => {
