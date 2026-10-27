@@ -1,5 +1,5 @@
 import cors from 'cors';
-import express, { RequestHandler } from 'express';
+import express, { RequestHandler, Request } from 'express';
 import type { Database } from 'sqlite';
 import { handleError } from './handle-error.js';
 import { z, ZodSchema } from 'zod';
@@ -31,7 +31,27 @@ export async function createServer(database: Database) {
         }
     }
 
-  app.get('/tasks', async (req, res) => {
+    const validateParams = <T>(schema: ZodSchema<T>):  RequestHandler<T> => (req, res, next) => {
+        try {
+            schema.parse(req.params)
+            next()
+        } catch (error) {
+            return handleError(req, res, error)
+        }
+    }
+
+    type Query = Request['query']
+
+    const validateQuery = <T>(schema: ZodSchema<T>):  RequestHandler<NonNullable<unknown>, unknown, unknown, Query & T> => (req, res, next) => {
+        try {
+            schema.parse(req.query)
+            next()
+        } catch (error) {
+            return handleError(req, res, error)
+        }
+    }
+
+    app.get('/tasks', validateQuery(CreateTaskSchema.pick({ completed: true }).partial()), async (req, res) => {
     const { completed } = req.query;
     const query = completed === 'true' ? completedTasks : incompleteTasks;
 
@@ -44,7 +64,7 @@ export async function createServer(database: Database) {
   });
 
   // Get a specific task
-  app.get('/tasks/:id', async (req, res) => {
+    app.get('/tasks/:id', validateParams(TaskSchema.pick({ id: true })),async (req, res) => {
     try {
       const { id } = req.params;
       const task = await getTask.get([id]);
