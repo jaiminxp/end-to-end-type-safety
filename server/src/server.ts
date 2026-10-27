@@ -1,10 +1,11 @@
 import cors from 'cors';
-import express from 'express';
+import express, { RequestHandler } from 'express';
 import type { Database } from 'sqlite';
 import { handleError } from './handle-error.js';
-import { z } from 'zod';
+import { z, ZodSchema } from 'zod';
 import {
-    TaskSchema, CreateTaskSchema, UpdateTaskSchema
+    TaskSchema, CreateTaskSchema, UpdateTaskSchema,
+    CreateTask
 } from 'busy-bee-schema'
 
 export async function createServer(database: Database) {
@@ -20,6 +21,15 @@ export async function createServer(database: Database) {
   const updateTask = await database.prepare(
     `UPDATE tasks SET title = ?, description = ?, completed = ? WHERE id = ?`,
   );
+
+    const validateBody = <T>(schema: ZodSchema<T>):  RequestHandler<NonNullable<unknown>, unknown, T> => (req, res, next) => {
+        try {
+            schema.parse(req.body)
+            next()
+        } catch (error) {
+            return handleError(req, res, error)
+        }
+    }
 
   app.get('/tasks', async (req, res) => {
     const { completed } = req.query;
@@ -47,9 +57,9 @@ export async function createServer(database: Database) {
     }
   });
 
-  app.post('/tasks', async (req, res) => {
+  app.post('/tasks', validateBody(CreateTaskSchema), async (req, res) => {
     try {
-      const task = CreateTaskSchema.parse(req.body);
+      const task = req.body;
       if (!task.title) return res.status(400).json({ message: 'Title is required' });
 
       await createTask.run([task.title, task.description]);
