@@ -7,11 +7,18 @@ import {
     TaskSchema, CreateTaskSchema, UpdateTaskSchema,
     CreateTask
 } from 'busy-bee-schema'
+import { OpenApiValidator } from 'express-openapi-validator';
 
 export async function createServer(database: Database) {
   const app = express();
   app.use(cors());
-  app.use(express.json());
+    app.use(express.json());
+
+    app.use(OpenApiValidator.middleware({
+        apiSpec: './openapi.json',
+        validateRequests: true, // (default)
+        validateResponses: true, // false by default
+      }))
 
   const incompleteTasks = await database.prepare('SELECT * FROM tasks whERE completed = 0');
   const completedTasks = await database.prepare('SELECT * FROM tasks WHERE completed = 1');
